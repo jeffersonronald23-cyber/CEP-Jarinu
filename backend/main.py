@@ -1,13 +1,19 @@
+import csv
+from multiprocessing import process
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from rapidfuzz import process
-import csv
+
+from backend.api.routes import router
+
 import os
 
-app = FastAPI()
+from backend.services.cep_service import CSV_PATH
 
-# Configuração CORS
+app = FastAPI(title="API CEP Jarinu")
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,9 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Caminhos absolutos
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_PATH = os.path.join(BASE_DIR, "..", "data", "cep_jarinu.csv")
+# incluir rotas da API
+app.include_router(router)
+
+# caminho frontend
+BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_PATH = os.path.join(BASE_DIR, "..", "frontend")
 
 DATA = []

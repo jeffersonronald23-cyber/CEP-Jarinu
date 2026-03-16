@@ -1,0 +1,218 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from rapidfuzz import process
+import unicodedata
+import csv
+import os
+
+# ---------------------------------------------------
+# INICIAR API
+# ---------------------------------------------------
+
+app = FastAPI(title="API CEP Jarinu")
+
+# ---------------------------------------------------
+# CORS
+# ---------------------------------------------------
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ---------------------------------------------------
+# CAMINHOS DO PROJETO
+# ---------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+CSV_PATH = os.path.join(BASE_DIR, "..", "data", "cep_jarinu.csv")
+
+FRONTEND_PATH = os.path.join(BASE_DIR, "..", "frontend")
+
+DATA = []
+
+# ---------------------------------------------------
+# NORMALIZAR TEXTO
+# ---------------------------------------------------
+
+def normalizar(texto):
+
+    if not texto:
+        return ""
+
+    texto = texto.lower()
+
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+
+# ---------------------------------------------------
+# DETECTAR SEPARADOR CSV
+# ---------------------------------------------------
+
+def detectar_delimitador(arquivo):
+
+    with open(arquivo, "r", encoding="latin-1") as f:
+
+        primeira_linha = f.readline()
+
+        if ";" in primeira_linha:
+            return ";"
+
+        return ","
+
+DELIMITER = detectar_delimitador(CSV_PATH)
+
+# ---------------------------------------------------
+# CARREGAR CSV
+# ---------------------------------------------------
+
+def carregar_dados():
+
+    global DATA
+
+    DATA = []
+
+    with open(CSV_PATH, encoding="latin-1") as f:
+
+        reader = csv.DictReader(f, delimiter=DELIMITER)
+
+        for row in reader:
+
+            if row is None:
+                continue
+
+            clean_row = {
+                k.strip(): (v.strip() if v else "")
+                for k, v in row.items()
+                if k
+            }
+
+            DATA.append(clean_row)
+
+    print(f"Linhas carregadas: {len(DATA)}")
+
+carregar_dados()
+
+# ---------------------------------------------------
+# BUSCAR RUA
+# ---------------------------------------------------
+
+@app.get("/buscar")
+def buscar(logradouro: str):
+
+    logradouro_norm = normalizar(logradouro)
+
+    resultados = []
+
+    for row in DATA:
+
+        rua = row.get("Logradouro", "")
+
+        if logradouro_norm in normalizar(rua):
+
+            resultados.append({
+                "logradouro": rua,
+                "bairro": row.get("Bairro", ""),
+                "cep": row.get("CEP", ""),
+                "situacao": row.get("Situacao", "")
+            })
+
+    if not resultados:
+        return {"erro": "Rua não encontrada"}
+
+    return resultados
+
+# ---------------------------------------------------
+# SUGESTÕES DE BUSCA
+# ---------------------------------------------------
+
+@app.get("/sugestoes")
+def sugestoes(q: str):
+
+    ruas = [
+        row.get("Logradouro", "")
+        for row in DATA
+        if row.get("Logradouro")
+    ]
+
+    ruas_norm = [normalizar(r) for r in ruas]
+
+    resultados = process.extract(
+        normalizar(q),
+        ruas_norm,
+        limit=10,
+        score_cutoff=60
+    )
+
+    sugestoes = []
+
+    for r in resultados:
+
+        sugestoes.append(ruas[r[2]])
+
+    return sugestoes
+
+# ---------------------------------------------------
+# LISTAR TODAS AS RUAS
+# ---------------------------------------------------
+
+@app.get("/ruas")
+def listar_ruas():
+
+    return [
+        {
+            "logradouro": row.get("Logradouro", ""),
+            "bairro": row.get("Bairro", ""),
+            "cep": row.get("CEP", ""),
+            "situacao": row.get("Situacao", "")
+        }
+        for row in DATA
+    ]
+
+# ---------------------------------------------------
+# CADASTRAR NOVA RUA
+# ---------------------------------------------------
+
+@app.post("/cadastrar")
+def cadastrar_rua(logradouro: str, bairro: str, cep: str, situacao: str):
+
+    if not logradouro or not cep:
+
+        return {"status": "Logradouro e CEP são obrigatórios"}
+
+    nova_rua = {
+        "Logradouro": logradouro,
+        "Bairro": bairro,
+        "CEP": cep,
+        "Situacao": situacao
+    }
+
+    # adicionar na memória
+    DATA.append(nova_rua)
+
+    # salvar no CSV
+    with open(CSV_PATH, "a", encoding="latin-1", newline="") as f:
+
+        writer = csv.writer(f, delimiter=DELIMITER)
+
+        writer.writerow([
+            logradouro,
+            bairro,
+            cep,
+            situacao
+        ])
+
+    return {"status": "Rua cadastrada com sucesso"}
+
+# ---------------------------------------------------
+# SERVIR FRONTEND
+# ---------------------------------------------------
+
+app.mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend")

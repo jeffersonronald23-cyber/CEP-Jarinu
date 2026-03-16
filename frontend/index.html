@@ -1,22 +1,101 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
 <meta charset="UTF-8">
-<title>Consulta CEP Jarinu</title>
+<title>Sistema CEP Jarinu</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<div class="container">
+<div class="app">
+
+<div class="sidebar">
+
+<h2>CEP Jarinu</h2>
+
+<button onclick="mostrarPagina('consulta')">
+Consulta CEP
+</button>
+
+<button onclick="mostrarPagina('cadastro')">
+Cadastrar Logradouro
+</button>
+
+<button onclick="mostrarPagina('lista')">
+Listar Logradouros
+</button>
+
+</div>
+
+
+<div class="conteudo">
+
+<!-- CONSULTA -->
+
+<div id="consulta" class="pagina">
 
 <h1>Consulta de CEP</h1>
 
 <input type="text" id="rua" placeholder="Digite o nome da rua">
 
 <button onclick="buscar()">Consultar</button>
+
 <div id="sugestoes" class="sugestoes"></div>
+
 <div id="resultado"></div>
+
+</div>
+
+
+
+<!-- CADASTRO -->
+
+<div id="cadastro" class="pagina" style="display:none">
+
+<h1>Cadastrar Nova Rua</h1>
+
+<input type="text" id="novo_logradouro" placeholder="Logradouro">
+<input type="text" id="novo_bairro" placeholder="Bairro">
+<input type="text" id="novo_cep" placeholder="CEP">
+<input type="text" id="novo_situacao" placeholder="Situação">
+
+<button onclick="cadastrarRua()">Cadastrar</button>
+
+<div id="resultadoCadastro"></div>
+
+</div>
+
+
+
+<!-- LISTAGEM -->
+
+<div id="lista" class="pagina" style="display:none">
+
+<h1>Logradouros Cadastrados</h1>
+
+<button onclick="carregarRuas()">Atualizar Lista</button>
+
+<table id="tabelaRuas">
+
+<thead>
+<tr>
+<th>Logradouro</th>
+<th>Bairro</th>
+<th>CEP</th>
+<th>Situação</th>
+<th>Ações</th>
+</tr>
+</thead>
+
+<tbody></tbody>
+
+</table>
+
+</div>
+
+</div>
 
 </div>
 

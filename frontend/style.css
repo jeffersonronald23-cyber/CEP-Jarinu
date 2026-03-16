@@ -1,56 +1,89 @@
 body{
-
-    font-family: Arial;
-    background:#e9f2ff;
+font-family:Arial;
+margin:0;
+background:#f2f4f8;
 }
 
-.container{
-    width:500px;
-    margin:auto;
-    margin-top:120px;
-    background:white;
-    padding:40px;
-    border-radius:10px;
-    text-align:center;
+.app{
+display:flex;
+height:100vh;
+}
 
+.sidebar{
+width:220px;
+background:#0a4fbf;
+color:white;
+padding:20px;
+}
+
+.sidebar h2{
+margin-bottom:30px;
+}
+
+.sidebar button{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+border:none;
+background:white;
+color:#0a4fbf;
+cursor:pointer;
+border-radius:5px;
+}
+
+.sidebar button:hover{
+background:#e6e6e6;
+}
+
+.conteudo{
+flex:1;
+padding:40px;
 }
 
 input{
-    background: #f8f7f7;
-    width:80%;
-    padding:10px;
-    margin-top:20px;
+display:block;
+width:300px;
+padding:10px;
+margin-top:10px;
+border:1px solid #ccc;
+border-radius:5px;
 }
 
 button{
-    padding:10px 20px;
-    margin-top:20px;
-    border-radius: 8%;
-    background:#02317e;
-    color:white;
-    border:none;
-    cursor:pointer;
+padding:10px 20px;
+margin-top:15px;
+background:#0a4fbf;
+color:white;
+border:none;
+border-radius:5px;
+cursor:pointer;
 }
+
+button:hover{
+background:#083b8a;
+}
+
+table{
+border-collapse:collapse;
+margin-top:20px;
+}
+
+table th, table td{
+border:1px solid #ccc;
+padding:10px;
+}
+
 .sugestoes{
-    padding:10px 20px;
-    margin-top:20px;
-    text-align: center;
-    background:white;
-    border:1px solid #ccc;
-    max-width:400px;
-    margin-left: 30px;
-    margin-right: 30px;
+background:white;
+border:1px solid #ccc;
+width:300px;
 }
 
 .item-sugestao{
-    padding:8px;
-    cursor:pointer;
+padding:8px;
+cursor:pointer;
 }
 
 .item-sugestao:hover{
-    background:#e6f0ff;
-}
-
-#resultado{
-    margin-top:30px;
+background:#e6f0ff;
 }

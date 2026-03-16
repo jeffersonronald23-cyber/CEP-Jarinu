@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Consulta CEP Jarinu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Consulta de CEP</h1>
+
+<input type="text" id="rua" placeholder="Digite o nome da rua">
+
+<button onclick="buscar()">Consultar</button>
+
+<div id="sugestoes" class="sugestoes"></div>
+
+<div id="resultado"></div>
+
+
+<hr>
+
+
+<h2>Cadastrar Nova Rua</h2>
+
+<input type="text" id="novo_logradouro" placeholder="Logradouro">
+<input type="text" id="novo_bairro" placeholder="Bairro">
+<input type="text" id="novo_cep" placeholder="CEP">
+<input type="text" id="novo_situacao" placeholder="Situação">
+
+<button onclick="cadastrarRua()">Cadastrar</button>
+
+<div id="resultadoCadastro"></div>
+
+</div>
+
+<script src="script.js"></script>
+
+
+style.css
+body{
+    font-family: Arial;
+    background:#e9f2ff;
+}
+
+.container{
+    width:500px;
+    margin:auto;
+    margin-top:80px;
+    background:white;
+    padding:40px;
+    border-radius:10px;
+    text-align:center;
+    box-shadow:0 4px 10px rgba(0,0,0,0.1);
+}
+
+h1{
+    margin-bottom:20px;
+}
+
+h2{
+    margin-top:40px;
+}
+
+input{
+    width:90%;
+    padding:10px;
+    margin-top:10px;
+    border:1px solid #ccc;
+    border-radius:5px;
+}
+
+button{
+    padding:10px 20px;
+    margin-top:15px;
+    background:#0a4fbf;
+    color:white;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#083b8a;
+}
+
+.sugestoes{
+    background:white;
+    border:1px solid #ccc;
+    max-width:90%;
+    margin:auto;
+    text-align:left;
+}
+
+.item-sugestao{
+    padding:8px;
+    cursor:pointer;
+}
+
+.item-sugestao:hover{
+    background:#e6f0ff;
+}
+
+#resultado{
+    margin-top:20px;
+}
+
+#resultadoCadastro{
+    margin-top:15px;
+    color:green;
+}
+
+hr{
+    margin:40px 0;
+}
+
+
+script.js
+async function buscar(){
+
+let rua = document.getElementById("rua").value;
+
+let response = await fetch(`/buscar?logradouro=${rua}`);
+
+let data = await response.json();
+
+let div = document.getElementById("resultado");
+
+if(data.erro){
+    div.innerHTML = "Rua não encontrada";
+}
+else{
+
+div.innerHTML = `
+<p><b>Logradouro:</b> ${data.logradouro}</p>
+<p><b>Bairro:</b> ${data.bairro}</p>
+<p><b>CEP:</b> ${data.cep}</p>
+<p><b>Situação:</b> ${data.situacao}</p>
+`;
+
+}
+
+}
+
+async function cadastrarRua(){
+
+let logradouro = document.getElementById("novo_logradouro").value;
+let bairro = document.getElementById("novo_bairro").value;
+let cep = document.getElementById("novo_cep").value;
+let situacao = document.getElementById("novo_situacao").value;
+
+let response = await fetch(
+`/cadastrar?logradouro=${logradouro}&bairro=${bairro}&cep=${cep}&situacao=${situacao}`,
+{ method:"POST" }
+);
+
+let data = await response.json();
+
+document.getElementById("resultadoCadastro").innerHTML = data.status;
+
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+const input = document.getElementById("rua");
+const sugestoesBox = document.getElementById("sugestoes");
+
+input.addEventListener("input", async function(){
+
+const texto = input.value;
+
+if(texto.length < 2){
+    sugestoesBox.innerHTML="";
+    return;
+}
+
+const resposta = await fetch(`/sugestoes?q=${texto}`);
+const dados = await resposta.json();
+
+sugestoesBox.innerHTML="";
+
+dados.forEach(rua => {
+
+const item=document.createElement("div");
+
+item.classList.add("item-sugestao");
+
+item.textContent=rua;
+
+item.onclick = () => {
+
+input.value=rua;
+
+sugestoesBox.innerHTML="";
+
+};
+
+sugestoesBox.appendChild(item);
+
+});
+
+});
+
+});
+
+</body>
+</html>
