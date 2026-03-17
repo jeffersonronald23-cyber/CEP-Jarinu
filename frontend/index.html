@@ -12,23 +12,16 @@
 <div class="app">
 
 <div class="sidebar">
+<img src="/img/logo.png" class="logo">
 
-<h2>CEP Jarinu</h2>
+<h3>CEP JARINU</h3>
 
-<button onclick="mostrarPagina('consulta')">
-Consulta CEP
-</button>
-
-<button onclick="mostrarPagina('cadastro')">
-Cadastrar Logradouro
-</button>
-
-<button onclick="mostrarPagina('lista')">
-Listar Logradouros
-</button>
+<button onclick="mostrarPagina('consulta')">Consulta CEP</button>
+<button class="admin"onclick="mostrarPagina('cadastro')">Cadastrar Logradouro</button>
+<button class="admin"onclick="mostrarPagina('lista')">Listar Logradouros</button>
+<button onclick="logout()">Logout</button>
 
 </div>
-
 
 <div class="conteudo">
 
@@ -40,15 +33,32 @@ Listar Logradouros
 
 <input type="text" id="rua" placeholder="Digite o nome da rua">
 
-<button onclick="buscar()">Consultar</button>
+<div id="sugestoes"></div>
 
-<div id="sugestoes" class="sugestoes"></div>
+<button onclick="buscar()">Consultar</button>
 
 <div id="resultado"></div>
 
 </div>
 
+<!-- LOGIN-->
+ <div id="login" class="pagina">
 
+<h2>Login Administrativo</h2>
+
+<input id="usuario" placeholder="Usuário">
+
+<br><br>
+
+<input id="senha" type="password" placeholder="Senha">
+
+<br><br>
+
+<button onclick="login()">Entrar</button>
+
+<div id="statusLogin"></div>
+
+</div>
 
 <!-- CADASTRO -->
 
@@ -68,14 +78,17 @@ Listar Logradouros
 </div>
 
 
-
-<!-- LISTAGEM -->
+<!-- LISTA -->
 
 <div id="lista" class="pagina" style="display:none">
 
 <h1>Logradouros Cadastrados</h1>
 
+<input type="text" id="buscarRuaAdmin" placeholder="Buscar rua...">
+
 <button onclick="carregarRuas()">Atualizar Lista</button>
+
+<br><br>
 
 <table id="tabelaRuas">
 
@@ -99,7 +112,7 @@ Listar Logradouros
 
 </div>
 
-<script src="script.js"></script>
+<script src="/script.js"></script>
 
 </body>
 </html>

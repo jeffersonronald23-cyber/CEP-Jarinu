@@ -8,8 +8,41 @@ document.querySelectorAll(".pagina").forEach(p=>{
 p.style.display="none";
 });
 
-document.getElementById(id).style.display="block";
+let pagina = document.getElementById(id);
 
+if(pagina){
+pagina.style.display="block";
+}
+
+if(id === "lista"){
+carregarRuas();
+}
+
+}
+
+//---VERIFICAÇÃO DE LOGIN
+
+
+function usuarioLogado(){
+    return localStorage.getItem("token") !== null;
+}
+
+//--------LOGOLT
+function logout(){
+
+localStorage.removeItem("token");
+
+alert("Logout realizado");
+
+location.reload();
+
+}
+// ------------------------------------------------
+// TOKEN
+// ------------------------------------------------
+
+function getToken(){
+return localStorage.getItem("token");
 }
 
 
@@ -22,6 +55,10 @@ async function buscar(){
 
 let rua = document.getElementById("rua").value;
 
+if(!rua){
+return;
+}
+
 let response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(rua)}`);
 
 let data = await response.json();
@@ -29,8 +66,11 @@ let data = await response.json();
 let div = document.getElementById("resultado");
 
 if(!data || data.length === 0){
+
 div.innerHTML = "Rua não encontrada";
+
 return;
+
 }
 
 let r = data[0];
@@ -47,29 +87,37 @@ div.innerHTML = `
 
 
 // ------------------------------------------------
-// CADASTRAR RUA
+// CADASTRAR
 // ------------------------------------------------
 
+
 async function cadastrarRua(){
+
+if(!usuarioLogado()){
+alert("Faça login para cadastrar ruas");
+return;
+}
 
 let logradouro = document.getElementById("novo_logradouro").value;
 let bairro = document.getElementById("novo_bairro").value;
 let cep = document.getElementById("novo_cep").value;
 let situacao = document.getElementById("novo_situacao").value;
 
+let token = getToken();
+
 let response = await fetch(
 `/api/cadastrar?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
-{method:"POST"}
+{
+method:"POST",
+headers:{
+Authorization: token
+}
+}
 );
 
 let data = await response.json();
 
 document.getElementById("resultadoCadastro").innerHTML = data.status;
-
-document.getElementById("novo_logradouro").value="";
-document.getElementById("novo_bairro").value="";
-document.getElementById("novo_cep").value="";
-document.getElementById("novo_situacao").value="";
 
 }
 
@@ -85,9 +133,29 @@ let response = await fetch("/api/ruas");
 
 let data = await response.json();
 
+renderTabela(data);
+
+}
+
+
+
+// ------------------------------------------------
+// RENDER TABELA
+// ------------------------------------------------
+
+function renderTabela(data){
+
 let tbody = document.querySelector("#tabelaRuas tbody");
 
 tbody.innerHTML="";
+
+if(!data || data.length === 0){
+
+tbody.innerHTML = "<tr><td colspan='5'>Nenhuma rua encontrada</td></tr>";
+
+return;
+
+}
 
 data.forEach(rua=>{
 
@@ -113,15 +181,56 @@ tbody.appendChild(tr);
 
 
 // ------------------------------------------------
-// EXCLUIR RUA
+// BUSCAR RUA NA LISTA (ADMIN)
+// ------------------------------------------------
+
+async function buscarRuaAdmin(){
+
+const texto = document.getElementById("buscarRuaAdmin").value.trim();
+
+if(texto.length === 0){
+carregarRuas();
+return;
+}
+
+try{
+
+const response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(texto)}`);
+
+const data = await response.json();
+
+renderTabela(data);
+
+}catch(err){
+
+console.error("Erro na busca:", err);
+
+}
+
+}
+
+
+
+// ------------------------------------------------
+// EXCLUIR
 // ------------------------------------------------
 
 async function excluirRua(id){
 
+
+if(!usuarioLogado()){
+alert("Faça login para excluir");
+return;
+}
 if(!confirm("Deseja excluir esta rua?")) return;
 
+let token = getToken();
+
 await fetch(`/api/excluir/${id}`,{
-method:"DELETE"
+method:"DELETE",
+headers:{
+Authorization: token
+}
 });
 
 carregarRuas();
@@ -131,11 +240,15 @@ carregarRuas();
 
 
 // ------------------------------------------------
-// EDITAR RUA
+// EDITAR
 // ------------------------------------------------
 
 async function editarRua(id){
 
+if(!usuarioLogado()){
+alert("Faça login para editar");
+return;
+}
 let logradouro = prompt("Novo logradouro:");
 let bairro = prompt("Novo bairro:");
 let cep = prompt("Novo CEP:");
@@ -143,10 +256,15 @@ let situacao = prompt("Nova situação:");
 
 if(!logradouro || !bairro || !cep || !situacao) return;
 
+let token = getToken();
+
 await fetch(
 `/api/editar/${id}?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
 {
-method:"PUT"
+method:"PUT",
+headers:{
+Authorization: token
+}
 }
 );
 
@@ -160,38 +278,50 @@ carregarRuas();
 // AUTOCOMPLETE
 // ------------------------------------------------
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", function(){
 
+    if(!usuarioLogado()){
+
+document.querySelectorAll(".admin").forEach(el=>{
+el.style.display="none";
+});
+
+}
 const input = document.getElementById("rua");
 const sugestoesBox = document.getElementById("sugestoes");
 
+if(input && sugestoesBox){
+
 input.addEventListener("input", async function(){
 
-const texto = input.value;
+let texto = input.value.trim();
 
 if(texto.length < 2){
-sugestoesBox.innerHTML="";
+sugestoesBox.innerHTML = "";
 return;
 }
 
-const resposta = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
-const dados = await resposta.json();
+try{
 
-sugestoesBox.innerHTML="";
+let response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
 
-dados.forEach(rua => {
+let dados = await response.json();
 
-const item=document.createElement("div");
+sugestoesBox.innerHTML = "";
+
+dados.forEach(function(rua){
+
+let item = document.createElement("div");
 
 item.classList.add("item-sugestao");
 
-item.textContent=rua;
+item.innerText = rua;
 
-item.onclick=()=>{
+item.onclick = function(){
 
-input.value=rua;
+input.value = rua;
 
-sugestoesBox.innerHTML="";
+sugestoesBox.innerHTML = "";
 
 };
 
@@ -199,6 +329,71 @@ sugestoesBox.appendChild(item);
 
 });
 
-});
+}catch(err){
+
+console.error("Erro autocomplete:", err);
+
+}
 
 });
+
+}
+
+
+
+// ------------------------------------------------
+// BUSCA ADMIN AUTOMÁTICA
+// ------------------------------------------------
+
+const buscaAdmin = document.getElementById("buscarRuaAdmin");
+
+if(buscaAdmin){
+
+buscaAdmin.addEventListener("input", function(){
+
+buscarRuaAdmin();
+
+});
+
+}
+
+});
+
+
+
+// ------------------------------------------------
+// LOGIN
+// ------------------------------------------------
+
+async function login(){
+
+let usuario = document.getElementById("usuario").value;
+let senha = document.getElementById("senha").value;
+
+try{
+
+let response = await fetch(`/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,{
+method:"POST"
+});
+
+if(response.status !== 200){
+
+document.getElementById("statusLogin").innerHTML = "Usuário ou senha inválidos";
+
+return;
+
+}
+
+let data = await response.json();
+
+localStorage.setItem("token", data.token);
+
+document.getElementById("statusLogin").innerHTML = "Login realizado com sucesso";
+
+}catch(err){
+
+console.error(err);
+
+}
+
+}

@@ -3,7 +3,8 @@ import csv
 from rapidfuzz import process
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CSV_PATH = os.path.join(BASE_DIR, "..", "..", "data", "cep_jarinu.csv")
+
+CSV_PATH = os.path.join(BASE_DIR, "..", "data", "cep_jarinu.csv")
 
 DATA = []
 
@@ -22,6 +23,10 @@ def detect_delimiter(sample_path):
 
 DELIMITER = detect_delimiter(CSV_PATH)
 
+
+# ------------------------------------------------
+# CARREGAR CSV
+# ------------------------------------------------
 
 def carregar_csv():
 
@@ -45,9 +50,11 @@ def carregar_csv():
 
             DATA.append(clean_row)
 
+    print("RUAS CARREGADAS:", len(DATA))
+
 
 carregar_csv()
-print("RUAS CARREGADAS:", len(DATA))
+
 
 # ------------------------------------------------
 # BUSCAR RUA
@@ -69,7 +76,7 @@ def buscar_rua(logradouro: str):
 
 
 # ------------------------------------------------
-# SUGESTÕES INTELIGENTES
+# SUGESTÕES
 # ------------------------------------------------
 
 def sugestoes_rua(q: str):
@@ -87,7 +94,7 @@ def sugestoes_rua(q: str):
 
 
 # ------------------------------------------------
-# LISTAR TODAS RUAS
+# LISTAR RUAS
 # ------------------------------------------------
 
 def listar_ruas():
@@ -96,7 +103,7 @@ def listar_ruas():
 
 
 # ------------------------------------------------
-# CADASTRAR RUA
+# CADASTRAR
 # ------------------------------------------------
 
 def cadastrar_rua(logradouro, bairro, cep, situacao):
@@ -119,7 +126,7 @@ def cadastrar_rua(logradouro, bairro, cep, situacao):
 
 
 # ------------------------------------------------
-# EDITAR RUA
+# EDITAR
 # ------------------------------------------------
 
 def editar_rua(id, logradouro, bairro, cep, situacao):
@@ -141,7 +148,7 @@ def editar_rua(id, logradouro, bairro, cep, situacao):
 
 
 # ------------------------------------------------
-# EXCLUIR RUA
+# EXCLUIR
 # ------------------------------------------------
 
 def excluir_rua(id):
@@ -150,7 +157,6 @@ def excluir_rua(id):
 
     DATA = [row for row in DATA if row["id"] != id]
 
-    # reordenar ids
     for idx, row in enumerate(DATA):
         row["id"] = idx
 
