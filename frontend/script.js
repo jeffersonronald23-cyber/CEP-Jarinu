@@ -53,37 +53,65 @@ return localStorage.getItem("token");
 
 async function buscar(){
 
-let rua = document.getElementById("rua").value;
+    let rua = document.getElementById("rua").value;
 
-if(!rua){
-return;
+    if(!rua){
+        return;
+    }
+
+    let response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(rua)}`);
+    let data = await response.json();
+
+    let div = document.getElementById("resultado");
+
+    if(!data || data.length === 0){
+        div.innerHTML = "Rua não encontrada";
+        return;
+    }
+
+    // 🔥 LISTA DE RESULTADOS
+    div.innerHTML = "<h3>Selecione o endereço:</h3>";
+
+    data.forEach((r, index) => {
+
+        let item = document.createElement("div");
+
+        item.style.border = "1px solid #ccc";
+        item.style.padding = "10px";
+        item.style.marginTop = "10px";
+        item.style.cursor = "pointer";
+        item.style.borderRadius = "5px";
+
+        item.innerHTML = `
+            <b>${r.Logradouro}</b><br>
+            Bairro: ${r.Bairro}<br>
+            CEP: ${r.CEP}
+        `;
+
+        // 👇 quando clicar, mostra detalhe
+        item.onclick = function(){
+            mostrarDetalhe(r);
+        };
+
+        div.appendChild(item);
+
+    });
+
 }
 
-let response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(rua)}`);
+function mostrarDetalhe(r){
 
-let data = await response.json();
+    let div = document.getElementById("resultado");
 
-let div = document.getElementById("resultado");
-
-if(!data || data.length === 0){
-
-div.innerHTML = "Rua não encontrada";
-
-return;
-
-}
-
-let r = data[0];
-
-div.innerHTML = `
-<p><b>Logradouro:</b> ${r.Logradouro}</p>
-<p><b>Bairro:</b> ${r.Bairro}</p>
-<p><b>CEP:</b> ${r.CEP}</p>
-<p><b>Situação:</b> ${r.Situacao}</p>
-`;
+    div.innerHTML = `
+        <h3>Endereço selecionado</h3>
+        <p><b>Logradouro:</b> ${r.Logradouro}</p>
+        <p><b>Bairro:</b> ${r.Bairro}</p>
+        <p><b>CEP:</b> ${r.CEP}</p>
+        <p><b>Situação:</b> ${r.Situacao}</p>
+    `;
 
 }
-
 
 
 // ------------------------------------------------
