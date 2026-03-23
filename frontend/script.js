@@ -20,14 +20,14 @@ carregarRuas();
 
 }
 
-//---VERIFICAÇÃO DE LOGIN
-
+// ------------------------------------------------
+// LOGIN / AUTH
+// ------------------------------------------------
 
 function usuarioLogado() {
     return localStorage.getItem("token") !== null;
 }
 
-//--------LOGOLT
 function logout() {
     localStorage.removeItem("token");
 
@@ -37,22 +37,15 @@ function logout() {
     if (status) status.innerHTML = "";
     if (usuarioLogadoEl) usuarioLogadoEl.innerText = "";
 
-    const usuario = document.getElementById("usuario");
-    const senha = document.getElementById("senha");
-    if (usuario) usuario.value = "";
-    if (senha) senha.value = "";
+    document.getElementById("usuario").value = "";
+    document.getElementById("senha").value = "";
 
     atualizarUIAuth();
 }
 
-// ------------------------------------------------
-// TOKEN
-// ------------------------------------------------
-
 function getToken() {
     return localStorage.getItem("token");
 }
-
 
 function atualizarUIAuth() {
     const logado = usuarioLogado();
@@ -76,9 +69,7 @@ async function buscar() {
     if (!rua) return;
 
     let url = `/api/buscar?logradouro=${encodeURIComponent(rua)}`;
-    if (bairro) {
-        url += `&bairro=${encodeURIComponent(bairro)}`;
-    }
+    if (bairro) url += `&bairro=${encodeURIComponent(bairro)}`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -94,6 +85,7 @@ async function buscar() {
 
     data.forEach((r) => {
         const item = document.createElement("div");
+
         item.style.border = "1px solid #ccc";
         item.style.padding = "10px";
         item.style.marginTop = "10px";
@@ -114,9 +106,7 @@ async function buscar() {
     });
 }
 
-
 function mostrarDetalhe(r){
-
     let div = document.getElementById("resultado");
 
     div.innerHTML = `
@@ -126,14 +116,11 @@ function mostrarDetalhe(r){
         <p><b>CEP:</b> ${r.CEP}</p>
         <p><b>Situação:</b> ${r.Situacao}</p>
     `;
-
 }
-
 
 // ------------------------------------------------
 // CADASTRAR
 // ------------------------------------------------
-
 
 async function cadastrarRua(){
 
@@ -153,56 +140,36 @@ let response = await fetch(
 `/api/cadastrar?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
 {
 method:"POST",
-headers:{
-Authorization: token
-}
+headers:{ Authorization: token }
 }
 );
 
 let data = await response.json();
-
 document.getElementById("resultadoCadastro").innerHTML = data.status;
 
 }
 
-
-
 // ------------------------------------------------
-// LISTAR RUAS
+// LISTAR
 // ------------------------------------------------
 
 async function carregarRuas(){
-
 let response = await fetch("/api/ruas");
-
 let data = await response.json();
-
 renderTabela(data);
-
 }
-
-
-
-// ------------------------------------------------
-// RENDER TABELA
-// ------------------------------------------------
 
 function renderTabela(data){
 
 let tbody = document.querySelector("#tabelaRuas tbody");
-
 tbody.innerHTML="";
 
 if(!data || data.length === 0){
-
 tbody.innerHTML = "<tr><td colspan='5'>Nenhuma rua encontrada</td></tr>";
-
 return;
-
 }
 
 data.forEach(rua=>{
-
 let tr=document.createElement("tr");
 
 tr.innerHTML=`
@@ -217,15 +184,12 @@ tr.innerHTML=`
 `;
 
 tbody.appendChild(tr);
-
 });
 
 }
 
-
-
 // ------------------------------------------------
-// BUSCAR RUA NA LISTA (ADMIN)
+// ADMIN BUSCA
 // ------------------------------------------------
 
 async function buscarRuaAdmin(){
@@ -237,55 +201,34 @@ carregarRuas();
 return;
 }
 
-try{
-
 const response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(texto)}`);
-
 const data = await response.json();
-
 renderTabela(data);
 
-}catch(err){
-
-console.error("Erro na busca:", err);
-
 }
-
-}
-
-
 
 // ------------------------------------------------
-// EXCLUIR
+// EXCLUIR / EDITAR
 // ------------------------------------------------
 
 async function excluirRua(id){
-
 
 if(!usuarioLogado()){
 alert("Faça login para excluir");
 return;
 }
+
 if(!confirm("Deseja excluir esta rua?")) return;
 
 let token = getToken();
 
 await fetch(`/api/excluir/${id}`,{
 method:"DELETE",
-headers:{
-Authorization: token
-}
+headers:{ Authorization: token }
 });
 
 carregarRuas();
-
 }
-
-
-
-// ------------------------------------------------
-// EDITAR
-// ------------------------------------------------
 
 async function editarRua(id){
 
@@ -293,6 +236,7 @@ if(!usuarioLogado()){
 alert("Faça login para editar");
 return;
 }
+
 let logradouro = prompt("Novo logradouro:");
 let bairro = prompt("Novo bairro:");
 let cep = prompt("Novo CEP:");
@@ -306,104 +250,149 @@ await fetch(
 `/api/editar/${id}?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
 {
 method:"PUT",
-headers:{
-Authorization: token
-}
+headers:{ Authorization: token }
 }
 );
 
 carregarRuas();
-
 }
 
-
-
 // ------------------------------------------------
-// AUTOCOMPLETE
+// AUTOCOMPLETE (RUA + BAIRRO)
 // ------------------------------------------------
 
 document.addEventListener("DOMContentLoaded", function () {
-    atualizarUIAuth();
 
-    const input = document.getElementById("rua");
-    const sugestoesBox = document.getElementById("sugestoes");
+atualizarUIAuth();
 
-    if (input && sugestoesBox) {
-        input.addEventListener("input", async function () {
-            const texto = input.value.trim();
+// RUA
+const inputRua = document.getElementById("rua");
+const sugestoesRua = document.getElementById("sugestoes");
 
-            if (texto.length < 2) {
-                sugestoesBox.innerHTML = "";
-                return;
-            }
+if (inputRua && sugestoesRua) {
 
-            try {
-                const response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
-                const dados = await response.json();
+inputRua.addEventListener("input", async function () {
 
-                sugestoesBox.innerHTML = "";
+let texto = this.value.trim();
 
-                dados.forEach(function (rua) {
-                    const item = document.createElement("div");
-                    item.classList.add("item-sugestao");
-                    item.innerText = rua;
+if (texto.length < 2){
+sugestoesRua.innerHTML="";
+return;
+}
 
-                    item.onclick = function () {
-                        input.value = rua;
-                        sugestoesBox.innerHTML = "";
-                    };
+let response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
+let dados = await response.json();
 
-                    sugestoesBox.appendChild(item);
-                });
-            } catch (err) {
-                console.error("Erro autocomplete:", err);
-            }
-        });
-    }
+sugestoesRua.innerHTML="";
 
-    const buscaAdmin = document.getElementById("buscarRuaAdmin");
-    if (buscaAdmin) {
-        buscaAdmin.addEventListener("input", function () {
-            buscarRuaAdmin();
-        });
-    }
+dados.forEach(rua=>{
+let item = document.createElement("div");
+item.classList.add("item-sugestao");
+item.innerText = rua;
+
+item.onclick = ()=>{
+inputRua.value = rua;
+sugestoesRua.innerHTML="";
+};
+
+sugestoesRua.appendChild(item);
+});
+
+});
+
+}
+
+// 🔥 BAIRRO (NOVO - CORRIGIDO)
+const inputBairro = document.getElementById("bairro");
+const sugestoesBairro = document.getElementById("sugestoesBairro");
+
+if (inputBairro) {
+
+inputBairro.addEventListener("input", async function () {
+
+let texto = this.value.trim();
+
+if (texto.length < 1){
+if(sugestoesBairro) sugestoesBairro.innerHTML="";
+return;
+}
+
+try{
+
+let response = await fetch(`/api/sugestoes-bairro?q=${encodeURIComponent(texto)}`);
+let dados = await response.json();
+
+if(!sugestoesBairro) return;
+
+sugestoesBairro.innerHTML="";
+
+dados.forEach(bairro=>{
+
+let item = document.createElement("div");
+item.classList.add("item-sugestao");
+item.innerText = bairro;
+
+item.onclick = ()=>{
+inputBairro.value = bairro;
+sugestoesBairro.innerHTML="";
+};
+
+sugestoesBairro.appendChild(item);
+
+});
+
+}catch(err){
+console.error("Erro bairro:", err);
+}
+
+});
+
+}
+
+// ADMIN SEARCH
+const buscaAdmin = document.getElementById("buscarRuaAdmin");
+
+if (buscaAdmin){
+buscaAdmin.addEventListener("input", buscarRuaAdmin);
+}
+
 });
 
 // ------------------------------------------------
 // LOGIN
 // ------------------------------------------------
 
-async function login() {
-    const usuario = document.getElementById("usuario").value.trim();
-    const senha = document.getElementById("senha").value.trim();
-    const status = document.getElementById("statusLogin");
+async function login(){
 
-    if (!status) {
-        alert("Elemento statusLogin não existe no HTML");
-        return;
-    }
+const usuario = document.getElementById("usuario").value.trim();
+const senha = document.getElementById("senha").value.trim();
+const status = document.getElementById("statusLogin");
 
-    try {
-        const response = await fetch(
-            `/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,
-            { method: "POST" }
-        );
+try{
 
-        if (!response.ok) {
-            status.innerHTML = "Usuário ou senha inválidos";
-            return;
-        }
+const response = await fetch(
+`/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,
+{ method:"POST" }
+);
 
-        const data = await response.json();
-        localStorage.setItem("token", data.token);
+if(!response.ok){
+status.innerHTML = "Usuário ou senha inválidos";
+return;
+}
 
-        status.innerHTML = "Login realizado com sucesso";
-        document.getElementById("usuarioLogado").innerText = `👤 ${usuario}`;
+const data = await response.json();
 
-        atualizarUIAuth();
+localStorage.setItem("token", data.token);
 
-    } catch (err) {
-        console.error(err);
-        status.innerHTML = "Erro ao conectar com o servidor";
-    }
+status.innerHTML = "Login realizado com sucesso";
+
+document.getElementById("usuarioLogado").innerText = `👤 ${usuario}`;
+
+atualizarUIAuth();
+
+}catch(err){
+console.error(err);
+status.innerHTML = "Erro ao conectar com servidor";
+}
+
 }

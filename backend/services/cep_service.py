@@ -129,8 +129,17 @@ def sugestoes_bairro(q: str):
 
     for bairro in bairros:
 
-        if q in normalizar(bairro):
+        bairro_norm = normalizar(bairro)
+
+        # 🔥 PRIORIDADE: começa com o texto
+        if bairro_norm.startswith(q):
             resultados.append(bairro)
+
+    # 🔥 fallback (caso não encontre nada)
+    if not resultados:
+        for bairro in bairros:
+            if q in normalizar(bairro):
+                resultados.append(bairro)
 
     return resultados[:10]
 
