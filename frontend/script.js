@@ -23,59 +23,77 @@ carregarRuas();
 //---VERIFICAÇÃO DE LOGIN
 
 
-function usuarioLogado(){
+function usuarioLogado() {
     return localStorage.getItem("token") !== null;
 }
 
 //--------LOGOLT
-function logout(){
+function logout() {
+    localStorage.removeItem("token");
 
-localStorage.removeItem("token");
+    const status = document.getElementById("statusLogin");
+    const usuarioLogadoEl = document.getElementById("usuarioLogado");
 
-alert("Logout realizado");
+    if (status) status.innerHTML = "";
+    if (usuarioLogadoEl) usuarioLogadoEl.innerText = "";
 
-location.reload();
+    const usuario = document.getElementById("usuario");
+    const senha = document.getElementById("senha");
+    if (usuario) usuario.value = "";
+    if (senha) senha.value = "";
 
+    atualizarUIAuth();
 }
+
 // ------------------------------------------------
 // TOKEN
 // ------------------------------------------------
 
-function getToken(){
-return localStorage.getItem("token");
+function getToken() {
+    return localStorage.getItem("token");
 }
 
 
+function atualizarUIAuth() {
+    const logado = usuarioLogado();
+
+    document.querySelectorAll(".admin").forEach(el => {
+        el.style.display = logado ? "block" : "none";
+    });
+
+    const btnLogout = document.getElementById("btnLogout");
+    if (btnLogout) btnLogout.style.display = logado ? "inline-block" : "none";
+}
 
 // ------------------------------------------------
 // CONSULTAR CEP
 // ------------------------------------------------
 
-async function buscar(){
+async function buscar() {
+    const rua = document.getElementById("rua").value.trim();
+    const bairro = document.getElementById("bairro").value.trim();
 
-    let rua = document.getElementById("rua").value;
+    if (!rua) return;
 
-    if(!rua){
-        return;
+    let url = `/api/buscar?logradouro=${encodeURIComponent(rua)}`;
+    if (bairro) {
+        url += `&bairro=${encodeURIComponent(bairro)}`;
     }
 
-    let response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(rua)}`);
-    let data = await response.json();
+    const response = await fetch(url);
+    const data = await response.json();
 
-    let div = document.getElementById("resultado");
+    const div = document.getElementById("resultado");
 
-    if(!data || data.length === 0){
+    if (!data || data.length === 0) {
         div.innerHTML = "Rua não encontrada";
         return;
     }
 
-    // 🔥 LISTA DE RESULTADOS
     div.innerHTML = "<h3>Selecione o endereço:</h3>";
 
-    data.forEach((r, index) => {
-
-        let item = document.createElement("div");
-
+    data.forEach((r) => {
+        const item = document.createElement("div");
         item.style.border = "1px solid #ccc";
         item.style.padding = "10px";
         item.style.marginTop = "10px";
@@ -88,16 +106,14 @@ async function buscar(){
             CEP: ${r.CEP}
         `;
 
-        // 👇 quando clicar, mostra detalhe
-        item.onclick = function(){
+        item.onclick = function () {
             mostrarDetalhe(r);
         };
 
         div.appendChild(item);
-
     });
-
 }
+
 
 function mostrarDetalhe(r){
 
@@ -306,122 +322,88 @@ carregarRuas();
 // AUTOCOMPLETE
 // ------------------------------------------------
 
-document.addEventListener("DOMContentLoaded", function(){
+document.addEventListener("DOMContentLoaded", function () {
+    atualizarUIAuth();
 
-    if(!usuarioLogado()){
+    const input = document.getElementById("rua");
+    const sugestoesBox = document.getElementById("sugestoes");
 
-document.querySelectorAll(".admin").forEach(el=>{
-el.style.display="none";
+    if (input && sugestoesBox) {
+        input.addEventListener("input", async function () {
+            const texto = input.value.trim();
+
+            if (texto.length < 2) {
+                sugestoesBox.innerHTML = "";
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
+                const dados = await response.json();
+
+                sugestoesBox.innerHTML = "";
+
+                dados.forEach(function (rua) {
+                    const item = document.createElement("div");
+                    item.classList.add("item-sugestao");
+                    item.innerText = rua;
+
+                    item.onclick = function () {
+                        input.value = rua;
+                        sugestoesBox.innerHTML = "";
+                    };
+
+                    sugestoesBox.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Erro autocomplete:", err);
+            }
+        });
+    }
+
+    const buscaAdmin = document.getElementById("buscarRuaAdmin");
+    if (buscaAdmin) {
+        buscaAdmin.addEventListener("input", function () {
+            buscarRuaAdmin();
+        });
+    }
 });
-
-}
-const input = document.getElementById("rua");
-const sugestoesBox = document.getElementById("sugestoes");
-
-if(input && sugestoesBox){
-
-input.addEventListener("input", async function(){
-
-let texto = input.value.trim();
-
-if(texto.length < 2){
-sugestoesBox.innerHTML = "";
-return;
-}
-
-try{
-
-let response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
-
-let dados = await response.json();
-
-sugestoesBox.innerHTML = "";
-
-dados.forEach(function(rua){
-
-let item = document.createElement("div");
-
-item.classList.add("item-sugestao");
-
-item.innerText = rua;
-
-item.onclick = function(){
-
-input.value = rua;
-
-sugestoesBox.innerHTML = "";
-
-};
-
-sugestoesBox.appendChild(item);
-
-});
-
-}catch(err){
-
-console.error("Erro autocomplete:", err);
-
-}
-
-});
-
-}
-
-
-
-// ------------------------------------------------
-// BUSCA ADMIN AUTOMÁTICA
-// ------------------------------------------------
-
-const buscaAdmin = document.getElementById("buscarRuaAdmin");
-
-if(buscaAdmin){
-
-buscaAdmin.addEventListener("input", function(){
-
-buscarRuaAdmin();
-
-});
-
-}
-
-});
-
-
 
 // ------------------------------------------------
 // LOGIN
 // ------------------------------------------------
 
-async function login(){
+async function login() {
+    const usuario = document.getElementById("usuario").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+    const status = document.getElementById("statusLogin");
 
-let usuario = document.getElementById("usuario").value;
-let senha = document.getElementById("senha").value;
+    if (!status) {
+        alert("Elemento statusLogin não existe no HTML");
+        return;
+    }
 
-try{
+    try {
+        const response = await fetch(
+            `/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,
+            { method: "POST" }
+        );
 
-let response = await fetch(`/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,{
-method:"POST"
-});
+        if (!response.ok) {
+            status.innerHTML = "Usuário ou senha inválidos";
+            return;
+        }
 
-if(response.status !== 200){
+        const data = await response.json();
+        localStorage.setItem("token", data.token);
 
-document.getElementById("statusLogin").innerHTML = "Usuário ou senha inválidos";
+        status.innerHTML = "Login realizado com sucesso";
+        document.getElementById("usuarioLogado").innerText = `👤 ${usuario}`;
 
-return;
+        atualizarUIAuth();
 
-}
-
-let data = await response.json();
-
-localStorage.setItem("token", data.token);
-
-document.getElementById("statusLogin").innerHTML = "Login realizado com sucesso";
-
-}catch(err){
-
-console.error(err);
-
-}
-
+    } catch (err) {
+        console.error(err);
+        status.innerHTML = "Erro ao conectar com o servidor";
+    }
 }

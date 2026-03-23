@@ -2,7 +2,7 @@ from fastapi import HTTPException, Header
 
 # usuários do sistema
 usuarios = {
-    "admin": "Saude@123"
+    "admin": "Saude@246"
 }
 
 # sessões ativas

@@ -1,6 +1,10 @@
 import os
 import csv
 from rapidfuzz import process
+import unicodedata
+import re
+import unicodedata
+
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -56,28 +60,51 @@ def carregar_csv():
 carregar_csv()
 
 
-# ------------------------------------------------
-# BUSCAR RUA
-# ------------------------------------------------
 
-def buscar_rua(logradouro: str):
+def normalizar(texto):
+    if not texto:
+        return ""
+    texto = texto.lower().strip()
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
 
-    logradouro = logradouro.lower()
+def buscar_rua(logradouro: str, bairro: str = None):
+    logradouro = normalizar(logradouro)
+    bairro = normalizar(bairro) if bairro else None
 
     resultados = []
+    tem_numero = re.search(r"\d+$", logradouro)
 
     for row in DATA:
+        nome_rua = normalizar(row["Logradouro"])
+        nome_bairro = normalizar(row["Bairro"])
 
-        if logradouro in row["Logradouro"].lower():
+        if tem_numero:
+            match_rua = (nome_rua == logradouro) or (nome_rua.startswith(logradouro + " "))
+        else:
+            match_rua = nome_rua.startswith(logradouro)
 
-            resultados.append(row)
+        if match_rua:
+            if bairro:
+                if nome_bairro == bairro:
+                    resultados.append(row)
+            else:
+                resultados.append(row)
 
     return resultados
-
-
 # ------------------------------------------------
 # SUGESTÕES
 # ------------------------------------------------
+def normalizar(texto):
+    if not texto:
+        return ""
+    texto = texto.lower().strip()
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
 
 def sugestoes_rua(q: str):
 
@@ -92,6 +119,20 @@ def sugestoes_rua(q: str):
 
     return [r[0] for r in resultados]
 
+def sugestoes_bairro(q: str):
+
+    q = normalizar(q)
+
+    bairros = list(set([row["Bairro"] for row in DATA]))
+
+    resultados = []
+
+    for bairro in bairros:
+
+        if q in normalizar(bairro):
+            resultados.append(bairro)
+
+    return resultados[:10]
 
 # ------------------------------------------------
 # LISTAR RUAS

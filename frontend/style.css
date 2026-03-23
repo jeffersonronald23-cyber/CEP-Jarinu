@@ -1,116 +1,206 @@
-body{
-font-family:Arial;
-margin:0;
-background:#f2f4f8;
-display: flex;
+/* RESET BÁSICO */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background: #f2f4f8;
 }
 
-.app{
-display:flex;
-height:100vh;
+/* LAYOUT PRINCIPAL */
+.app {
+    display: flex;
 }
 
-/*.sidebar{
-width:220px;
-background:#011c47;
-color:white;
-padding:20px;
-}*/
-.sidebar{
-width:220px;
-background:#011c47;
-color:white;
-padding:20px;
-display:flex;
-flex-direction:column;
-align-items:center; /* centraliza tudo horizontalmente */
+/* --- AJUSTE SIDEBAR (CENTRALIZAÇÃO TOTAL) --- */
+.sidebar {
+    width: 220px;
+    background: #011c47;
+    color: white;
+    padding: 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    flex-direction: column;
+    text-align: center;
 }
 
-.logo{
-width:80px;
-border-radius: 5px;
-margin-bottom:15px;
-filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+/* LOGO */
+.logo {
+    width: 80px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    /* Removidos margins laterais fixas para o flex-center agir */
+}
+/* BOTÕES SIDEBAR */
+.sidebar button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: none;
+    background: white;
+    color: #011c47;
+    cursor: pointer;
+    border-radius: 5px;
+    font-weight: bold;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.1s, box-shadow 0.1s;
 }
 
-.sidebar h2{
-margin-bottom:30px;
+.sidebar button:hover {
+    background: #e6e6e6;
+    box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
 }
 
-.sidebar button{
-width:100%;
-padding:10px;
-margin-bottom:10px;
-border:none;
-background:white;
-color:#011a47;
-cursor:pointer;
-border-radius:5px;
+.sidebar button:active {
+    transform: translateY(1px);
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.sidebar button:hover{
-background:#e6e6e6; 
-} 
+/* CONTEÚDO */
+.conteudo {
+    margin-left: 260px;
+    padding: 20px;
 
-.conteudo{
-flex:1;
-padding:40px;
 }
 
-input{
-display:block;
-width:300px;
-padding:10px;
-margin-top:10px;
-border:1px solid #ccc;
-border-radius:5px;
+/* --- AJUSTE LOGIN (ENTRAR E SAIR UM SOBRE O OUTRO) --- */
+.top-bar {
+    display: flex;
+    justify-content: flex-end; 
+    margin-bottom:30px;
+
 }
 
-button{
-padding:10px 20px;
-margin-top:15px;
-background:#011A47;
-color:white;
-border:none;
-border-radius:5px;
-cursor:pointer;
+/* Criamos um container para empilhar TUDO (inputs + entrar + sair) */
+.login-topo {
+    display: flex;
+    gap: 5px;
 }
 
-button:hover{
-background:#011A47;
+/* INPUTS DE LOGIN PEQUENOS */
+.top-bar > button {
+    width: 10px ; /* Tamanho reduzido para o login */
+    padding: 6px;
+    margin: 0 ;
+    
+}
+.login-topo input{
+     width: 100px;
+    padding: 6px;
 }
 
-table{
-border-collapse:collapse;
-margin-top:20px;
+
+.login-topo button {
+    width: 80px;
+    padding: 6px 12px;
+    
 }
 
-table th, table td{
-border:1px solid #ccc;
-padding:10px;
+/* INPUT PADRÃO E CAMPOS DE BUSCA */
+input {
+    margin-top: 10px;
+    display: blockk;
+    width:300;
+    padding:10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    box-shadow: inset 0px 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.sugestoes{
-background:white;
-border:1px solid #ccc;
-width:300px;
+input:focus {
+    border-color: #011c47;
+    box-shadow: 0px 0px 5px rgba(1, 28, 71, 0.2);
 }
 
-#sugestoes {
-border:1px solid #ccc;
-max-height:200px;
-overflow-y:auto;
-background:white;
-position:absolute;
-width:300px;
-z-index:1000;
+/* TODOS OS BOTÕES DO SISTEMA */
+button {
+   background: #011c47;
+    color: white;
+    border: none;
+    padding:6px;
+    margin-top: 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+    transition: all 0.1s;
 }
 
-.item-sugestao{
-padding:8px;
-cursor:pointer;
+button:hover {
+    background: #033a80;
+    box-shadow: 0px 6px 8px rgba(0, 0, 0, 0.3);
+    transform: translateY(-1px);
 }
 
-.item-sugestao:hover{
-background:#e6f0ff;
+button:active {
+    transform: translateY(1px);
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* BOTÃO SAIR ESPECÍFICO (LADO DIREITO DO LOGIN) */
+.top-bar > button { 
+    width: auto;
+    padding:6px;
+    margin: 0; /* Remove o margin-top padrão para alinhar com o bloco */
+}
+
+/* AUTOCOMPLETE CONTAINER */
+#campo {
+    position: relative;
+    width:fit-content;
+}
+
+/* DROPDOWN SUGESTÕES */
+#sugestoes,
+#sugestoesBairro {
+    position:relative;
+    background: white;
+    width: 100%;
+    z-index:1000;
+    max-height: 100px;
+    overflow-y: auto;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+}
+
+/* ITEM SUGESTÃO */
+.item-sugestao {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.item-sugestao:hover {
+    background: #e6f0ff;
+}
+
+/* TABELA */
+table {
+    border-collapse: collapse;
+    margin-top: 20px;
+    width: 10%;
+}
+
+table th,
+table td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: left;
+}
+
+/* CAIXAS */
+.consulta{
+    margin-top: 0;
+}
+.login-box {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    max-width: 500px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }

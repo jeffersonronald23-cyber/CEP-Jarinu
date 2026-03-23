@@ -7,17 +7,15 @@ from backend.auth.auth_service import login
 
 app = FastAPI()
 
-
-# endpoint login
+# 🔥 CORRETO
 @app.post("/api/login")
 def login_rota(username: str, password: str):
     return login(username, password)
 
-
-# registrar rotas
+# rotas do sistema
 app.include_router(router)
 
-
+# frontend
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_PATH = os.path.join(BASE_DIR, "..", "frontend")
 

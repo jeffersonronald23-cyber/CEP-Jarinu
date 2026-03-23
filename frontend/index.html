@@ -11,102 +11,94 @@
 
 <div class="app">
 
+<!-- SIDEBAR -->
 <div class="sidebar">
-<img src="/img/logo.png" class="logo">
 
-<h3>CEP JARINU</h3>
+    <img src="/img/logo.png" class="logo">
 
-<button onclick="mostrarPagina('consulta')">Consulta CEP</button>
-<button class="admin"onclick="mostrarPagina('cadastro')">Cadastrar Logradouro</button>
-<button class="admin"onclick="mostrarPagina('lista')">Listar Logradouros</button>
-<!--<button onclick="logout()">Logout</button> -->
+    <h2>CEP JARINU</h2>
+
+    <button onclick="mostrarPagina('consulta')">Consulta CEP</button>
+    <button class="admin" onclick="mostrarPagina('cadastro')">Cadastrar Logradouro</button>
+    <button class="admin" onclick="mostrarPagina('lista')">Listar Logradouros</button>
 
 </div>
 
+<!-- CONTEÚDO -->
 <div class="conteudo">
 
-<!-- CONSULTA -->
-
-<div id="consulta" class="pagina">
-
-<h1>Consulta de CEP</h1>
-
-<input type="text" id="rua" placeholder="Digite o nome da rua">
-
-<div id="sugestoes"></div>
-
-<button onclick="buscar()">Consultar</button>
-
-<div id="resultado"></div>
-
+    <!-- TOPO -->
+   <div class="top-bar">
+    <div class="login-topo">
+        <span id="usuarioLogado"></span>
+        <input id="usuario" placeholder="Usuário">
+        <input id="senha" type="password" placeholder="Senha">
+        <button onclick="login()">Entrar</button>
+        <button onclick="logout()" id="btnLogout" style="display:none;">Sair</button>
+        <div id="statusLogin"></div>
+    </div>
 </div>
 
-<!-- LOGIN-->
- <div id="login" class="pagina">
+    <!-- CONSULTA -->
+    <div id="consulta" class="pagina">
 
-<h2>Login Administrativo</h2>
+        <h1>Consulta de CEP</h1>
 
-<input id="usuario" placeholder="Usuário">
+        <div class="campo">
+            <input type="text" id="rua" placeholder="Digite o nome da rua">
+            <div id="sugestoes"></div>
+        </div>
 
-<br><br>
+        <div class="campo">
+            <input type="text" id="bairro" placeholder="Digite o bairro (opcional)">
+            <div id="sugestoesBairro"></div>
+        </div>
 
-<input id="senha" type="password" placeholder="Senha">
+        <button onclick="buscar()">Consultar</button>
 
-<br><br>
+        <div id="resultado"></div>
 
-<button onclick="login()">Entrar</button>
+    </div>
 
-<div id="statusLogin"></div>
+    <!-- CADASTRO -->
+    <div id="cadastro" class="pagina" style="display:none">
 
-</div>
+        <h1>Cadastrar Nova Rua</h1>
 
-<!-- CADASTRO -->
+        <input type="text" id="novo_logradouro" placeholder="Logradouro">
+        <input type="text" id="novo_bairro" placeholder="Bairro">
+        <input type="text" id="novo_cep" placeholder="CEP">
+        <input type="text" id="novo_situacao" placeholder="Situação">
 
-<div id="cadastro" class="pagina" style="display:none">
+        <button onclick="cadastrarRua()">Cadastrar</button>
 
-<h1>Cadastrar Nova Rua</h1>
+        <div id="resultadoCadastro"></div>
 
-<input type="text" id="novo_logradouro" placeholder="Logradouro">
-<input type="text" id="novo_bairro" placeholder="Bairro">
-<input type="text" id="novo_cep" placeholder="CEP">
-<input type="text" id="novo_situacao" placeholder="Situação">
+    </div>
 
-<button onclick="cadastrarRua()">Cadastrar</button>
+    <!-- LISTA -->
+    <div id="lista" class="pagina" style="display:none">
 
-<div id="resultadoCadastro"></div>
+        <h1>Logradouros Cadastrados</h1>
 
-</div>
+        <input type="text" id="buscarRuaAdmin" placeholder="Buscar rua...">
 
+        <button onclick="carregarRuas()">Atualizar Lista</button>
 
-<!-- LISTA -->
+        <table id="tabelaRuas">
+            <thead>
+                <tr>
+                    <th>Logradouro</th>
+                    <th>Bairro</th>
+                    <th>CEP</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
 
-<div id="lista" class="pagina" style="display:none">
-
-<h1>Logradouros Cadastrados</h1>
-
-<input type="text" id="buscarRuaAdmin" placeholder="Buscar rua...">
-
-<button onclick="carregarRuas()">Atualizar Lista</button>
-
-<br><br>
-
-<table id="tabelaRuas">
-
-<thead>
-<tr>
-<th>Logradouro</th>
-<th>Bairro</th>
-<th>CEP</th>
-<th>Situação</th>
-<th>Ações</th>
-</tr>
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-</div>
+    </div>
 
 </div>
 

@@ -1,1 +1,1125 @@
-uvicorn backend.main:app --host 127.0.0.1 --port 8000
+auth_service.py
+
+from fastapi import HTTPException, Header
+
+# usuários do sistema
+usuarios = {
+    "admin": "Saude@123"
+}
+
+# sessões ativas
+SESSIONS = {}
+
+
+def login(username: str, password: str):
+
+    if username in usuarios and usuarios[username] == password:
+
+        token = username + "_token"
+
+        SESSIONS[token] = username
+
+        return {"token": token}
+
+    raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
+
+
+def validar_token(authorization: str = Header(None)):
+
+    if authorization not in SESSIONS:
+        raise HTTPException(status_code=401, detail="Não autorizado")
+
+    return SESSIONS[authorization]
+
+
+
+routes.py
+
+from fastapi import APIRouter, Depends
+
+from backend.auth.auth_service import validar_token
+
+from backend.services.cep_service import (
+    buscar_rua,
+    sugestoes_bairro,
+    sugestoes_rua,
+    listar_ruas,
+    cadastrar_rua,
+    editar_rua,
+    excluir_rua
+)
+
+
+router = APIRouter(prefix="/api")
+
+
+@router.get("/buscar")
+def buscar(logradouro: str, bairro: str = None):
+    return buscar_rua(logradouro, bairro)
+
+
+@router.get("/sugestoes")
+def sugestoes_rota(q: str):
+    return sugestoes_rua(q)
+
+
+@router.get("/ruas")
+def listar():
+    return listar_ruas()
+
+@router.get("/sugestoes-bairro")
+def sugestoes_bairro_rota(q: str):
+    return sugestoes_bairro(q)
+
+# rotas protegidas
+
+@router.post("/cadastrar")
+def cadastrar(logradouro: str, bairro: str, cep: str, situacao: str, user = Depends(validar_token)):
+    return cadastrar_rua(logradouro, bairro, cep, situacao)
+
+
+@router.put("/editar/{id}")
+def editar(id: int, logradouro: str, bairro: str, cep: str, situacao: str, user = Depends(validar_token)):
+    return editar_rua(id, logradouro, bairro, cep, situacao)
+
+
+@router.delete("/excluir/{id}")
+def excluir(id: int, user = Depends(validar_token)):
+    return excluir_rua(id)
+
+
+models.py
+
+from sqlmodel import SQLModel, Field
+
+class Rua(SQLModel, table=True):
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    logradouro: str
+    bairro: str
+    cep: str
+    situacao: str
+
+database.py
+
+from sqlmodel import SQLModel, create_engine
+
+DATABASE_URL = "sqlite:///./cep_jarinu.db"
+
+engine = create_engine(DATABASE_URL, echo=False)
+
+def create_db():
+    SQLModel.metadata.create_all(engine)
+
+
+cep_service.py
+
+import os
+import csv
+from rapidfuzz import process
+import unicodedata
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CSV_PATH = os.path.join(BASE_DIR, "..", "data", "cep_jarinu.csv")
+
+DATA = []
+
+
+def detect_delimiter(sample_path):
+
+    with open(sample_path, "r", encoding="latin-1") as f:
+
+        first_line = f.readline()
+
+        if ";" in first_line:
+            return ";"
+
+        return ","
+
+
+DELIMITER = detect_delimiter(CSV_PATH)
+
+
+# ------------------------------------------------
+# CARREGAR CSV
+# ------------------------------------------------
+
+def carregar_csv():
+
+    global DATA
+
+    DATA = []
+
+    with open(CSV_PATH, encoding="latin-1") as f:
+
+        reader = csv.DictReader(f, delimiter=DELIMITER)
+
+        for idx, row in enumerate(reader):
+
+            clean_row = {
+                "id": idx,
+                "Logradouro": row.get("Logradouro", "").strip(),
+                "Bairro": row.get("Bairro", "").strip(),
+                "CEP": row.get("CEP", "").strip(),
+                "Situacao": row.get("Situacao", "").strip()
+            }
+
+            DATA.append(clean_row)
+
+    print("RUAS CARREGADAS:", len(DATA))
+
+
+carregar_csv()
+
+
+
+import re
+
+def buscar_rua(logradouro: str, bairro: str = None):
+
+    logradouro = logradouro.lower().strip()
+    bairro = bairro.lower().strip() if bairro else None
+
+    resultados = []
+
+    # detecta se termina com número (ex: "rua 1")
+    tem_numero = re.search(r"\d+$", logradouro)
+
+    for row in DATA:
+
+        nome_rua = row["Logradouro"].lower()
+        nome_bairro = row["Bairro"].lower()
+
+        match_rua = False
+
+        if tem_numero:
+            # busca mais precisa (evita rua 10, 11...)
+            if nome_rua == logradouro or nome_rua.startswith(logradouro + " "):
+                match_rua = True
+        else:
+            # busca inteligente normal
+            if nome_rua.startswith(logradouro):
+                match_rua = True
+
+        if match_rua:
+            if bairro:
+                if bairro in nome_bairro:
+                    resultados.append(row)
+            else:
+                resultados.append(row)
+
+    return resultados
+# ------------------------------------------------
+# SUGESTÕES
+# ------------------------------------------------
+def normalizar(texto):
+    if not texto:
+        return ""
+
+    texto = texto.lower().strip()
+
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+
+def sugestoes_rua(q: str):
+
+    ruas = [row["Logradouro"] for row in DATA]
+
+    resultados = process.extract(
+        q,
+        ruas,
+        limit=10,
+        score_cutoff=60
+    )
+
+    return [r[0] for r in resultados]
+
+def sugestoes_bairro(q: str):
+
+    q = normalizar(q)
+
+    bairros = list(set([row["Bairro"] for row in DATA]))
+
+    resultados = []
+
+    for bairro in bairros:
+
+        if q in normalizar(bairro):
+            resultados.append(bairro)
+
+    return resultados[:10]
+
+# ------------------------------------------------
+# LISTAR RUAS
+# ------------------------------------------------
+
+def listar_ruas():
+
+    return DATA
+
+
+# ------------------------------------------------
+# CADASTRAR
+# ------------------------------------------------
+
+def cadastrar_rua(logradouro, bairro, cep, situacao):
+
+    novo_id = len(DATA)
+
+    nova_rua = {
+        "id": novo_id,
+        "Logradouro": logradouro,
+        "Bairro": bairro,
+        "CEP": cep,
+        "Situacao": situacao
+    }
+
+    DATA.append(nova_rua)
+
+    salvar_csv()
+
+    return {"status": "Rua cadastrada com sucesso"}
+
+
+# ------------------------------------------------
+# EDITAR
+# ------------------------------------------------
+
+def editar_rua(id, logradouro, bairro, cep, situacao):
+
+    for row in DATA:
+
+        if row["id"] == id:
+
+            row["Logradouro"] = logradouro
+            row["Bairro"] = bairro
+            row["CEP"] = cep
+            row["Situacao"] = situacao
+
+            salvar_csv()
+
+            return {"status": "Rua atualizada"}
+
+    return {"erro": "ID não encontrado"}
+
+
+# ------------------------------------------------
+# EXCLUIR
+# ------------------------------------------------
+
+def excluir_rua(id):
+
+    global DATA
+
+    DATA = [row for row in DATA if row["id"] != id]
+
+    for idx, row in enumerate(DATA):
+        row["id"] = idx
+
+    salvar_csv()
+
+    return {"status": "Rua excluída"}
+
+
+# ------------------------------------------------
+# SALVAR CSV
+# ------------------------------------------------
+
+def salvar_csv():
+
+    with open(CSV_PATH, "w", encoding="latin-1", newline="") as f:
+
+        writer = csv.writer(f, delimiter=DELIMITER)
+
+        writer.writerow(["Logradouro", "Bairro", "CEP", "Situacao"])
+
+        for row in DATA:
+
+            writer.writerow([
+                row["Logradouro"],
+                row["Bairro"],
+                row["CEP"],
+                row["Situacao"]
+            ])
+
+main.py
+
+import os
+import csv
+from rapidfuzz import process
+import unicodedata
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+CSV_PATH = os.path.join(BASE_DIR, "..", "data", "cep_jarinu.csv")
+
+DATA = []
+
+
+def detect_delimiter(sample_path):
+
+    with open(sample_path, "r", encoding="latin-1") as f:
+
+        first_line = f.readline()
+
+        if ";" in first_line:
+            return ";"
+
+        return ","
+
+
+DELIMITER = detect_delimiter(CSV_PATH)
+
+
+# ------------------------------------------------
+# CARREGAR CSV
+# ------------------------------------------------
+
+def carregar_csv():
+
+    global DATA
+
+    DATA = []
+
+    with open(CSV_PATH, encoding="latin-1") as f:
+
+        reader = csv.DictReader(f, delimiter=DELIMITER)
+
+        for idx, row in enumerate(reader):
+
+            clean_row = {
+                "id": idx,
+                "Logradouro": row.get("Logradouro", "").strip(),
+                "Bairro": row.get("Bairro", "").strip(),
+                "CEP": row.get("CEP", "").strip(),
+                "Situacao": row.get("Situacao", "").strip()
+            }
+
+            DATA.append(clean_row)
+
+    print("RUAS CARREGADAS:", len(DATA))
+
+
+carregar_csv()
+
+
+
+import re
+
+def buscar_rua(logradouro: str, bairro: str = None):
+
+    logradouro = logradouro.lower().strip()
+    bairro = bairro.lower().strip() if bairro else None
+
+    resultados = []
+
+    # detecta se termina com número (ex: "rua 1")
+    tem_numero = re.search(r"\d+$", logradouro)
+
+    for row in DATA:
+
+        nome_rua = row["Logradouro"].lower()
+        nome_bairro = row["Bairro"].lower()
+
+        match_rua = False
+
+        if tem_numero:
+            # busca mais precisa (evita rua 10, 11...)
+            if nome_rua == logradouro or nome_rua.startswith(logradouro + " "):
+                match_rua = True
+        else:
+            # busca inteligente normal
+            if nome_rua.startswith(logradouro):
+                match_rua = True
+
+        if match_rua:
+            if bairro:
+                if bairro in nome_bairro:
+                    resultados.append(row)
+            else:
+                resultados.append(row)
+
+    return resultados
+# ------------------------------------------------
+# SUGESTÕES
+# ------------------------------------------------
+def normalizar(texto):
+    if not texto:
+        return ""
+
+    texto = texto.lower().strip()
+
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto)
+        if unicodedata.category(c) != "Mn"
+    )
+
+def sugestoes_rua(q: str):
+
+    ruas = [row["Logradouro"] for row in DATA]
+
+    resultados = process.extract(
+        q,
+        ruas,
+        limit=10,
+        score_cutoff=60
+    )
+
+    return [r[0] for r in resultados]
+
+def sugestoes_bairro(q: str):
+
+    q = normalizar(q)
+
+    bairros = list(set([row["Bairro"] for row in DATA]))
+
+    resultados = []
+
+    for bairro in bairros:
+
+        if q in normalizar(bairro):
+            resultados.append(bairro)
+
+    return resultados[:10]
+
+# ------------------------------------------------
+# LISTAR RUAS
+# ------------------------------------------------
+
+def listar_ruas():
+
+    return DATA
+
+
+# ------------------------------------------------
+# CADASTRAR
+# ------------------------------------------------
+
+def cadastrar_rua(logradouro, bairro, cep, situacao):
+
+    novo_id = len(DATA)
+
+    nova_rua = {
+        "id": novo_id,
+        "Logradouro": logradouro,
+        "Bairro": bairro,
+        "CEP": cep,
+        "Situacao": situacao
+    }
+
+    DATA.append(nova_rua)
+
+    salvar_csv()
+
+    return {"status": "Rua cadastrada com sucesso"}
+
+
+# ------------------------------------------------
+# EDITAR
+# ------------------------------------------------
+
+def editar_rua(id, logradouro, bairro, cep, situacao):
+
+    for row in DATA:
+
+        if row["id"] == id:
+
+            row["Logradouro"] = logradouro
+            row["Bairro"] = bairro
+            row["CEP"] = cep
+            row["Situacao"] = situacao
+
+            salvar_csv()
+
+            return {"status": "Rua atualizada"}
+
+    return {"erro": "ID não encontrado"}
+
+
+# ------------------------------------------------
+# EXCLUIR
+# ------------------------------------------------
+
+def excluir_rua(id):
+
+    global DATA
+
+    DATA = [row for row in DATA if row["id"] != id]
+
+    for idx, row in enumerate(DATA):
+        row["id"] = idx
+
+    salvar_csv()
+
+    return {"status": "Rua excluída"}
+
+
+# ------------------------------------------------
+# SALVAR CSV
+# ------------------------------------------------
+
+def salvar_csv():
+
+    with open(CSV_PATH, "w", encoding="latin-1", newline="") as f:
+
+        writer = csv.writer(f, delimiter=DELIMITER)
+
+        writer.writerow(["Logradouro", "Bairro", "CEP", "Situacao"])
+
+        for row in DATA:
+
+            writer.writerow([
+                row["Logradouro"],
+                row["Bairro"],
+                row["CEP"],
+                row["Situacao"]
+            ])
+
+
+script.py
+
+// ------------------------------------------------
+// TROCAR PÁGINAS
+// ------------------------------------------------
+
+function mostrarPagina(id){
+
+document.querySelectorAll(".pagina").forEach(p=>{
+p.style.display="none";
+});
+
+let pagina = document.getElementById(id);
+
+if(pagina){
+pagina.style.display="block";
+}
+
+if(id === "lista"){
+carregarRuas();
+}
+
+}
+
+//---VERIFICAÇÃO DE LOGIN
+
+
+function usuarioLogado(){
+    return localStorage.getItem("token") !== null;
+}
+
+//--------LOGOLT
+function logout(){
+
+localStorage.removeItem("token");
+
+alert("Logout realizado");
+
+location.reload();
+
+}
+// ------------------------------------------------
+// TOKEN
+// ------------------------------------------------
+
+function getToken(){
+return localStorage.getItem("token");
+}
+
+
+
+// ------------------------------------------------
+// CONSULTAR CEP
+// ------------------------------------------------
+
+async function buscar(){
+
+    let rua = document.getElementById("rua").value;
+
+    if(!rua){
+        return;
+    }
+
+    let response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(rua)}`);
+    let data = await response.json();
+
+    let div = document.getElementById("resultado");
+
+    if(!data || data.length === 0){
+        div.innerHTML = "Rua não encontrada";
+        return;
+    }
+
+    // 🔥 LISTA DE RESULTADOS
+    div.innerHTML = "<h3>Selecione o endereço:</h3>";
+
+    data.forEach((r, index) => {
+
+        let item = document.createElement("div");
+
+        item.style.border = "1px solid #ccc";
+        item.style.padding = "10px";
+        item.style.marginTop = "10px";
+        item.style.cursor = "pointer";
+        item.style.borderRadius = "5px";
+
+        item.innerHTML = `
+            <b>${r.Logradouro}</b><br>
+            Bairro: ${r.Bairro}<br>
+            CEP: ${r.CEP}
+        `;
+
+        // 👇 quando clicar, mostra detalhe
+        item.onclick = function(){
+            mostrarDetalhe(r);
+        };
+
+        div.appendChild(item);
+
+    });
+
+}
+
+function mostrarDetalhe(r){
+
+    let div = document.getElementById("resultado");
+
+    div.innerHTML = `
+        <h3>Endereço selecionado</h3>
+        <p><b>Logradouro:</b> ${r.Logradouro}</p>
+        <p><b>Bairro:</b> ${r.Bairro}</p>
+        <p><b>CEP:</b> ${r.CEP}</p>
+        <p><b>Situação:</b> ${r.Situacao}</p>
+    `;
+
+}
+
+
+// ------------------------------------------------
+// CADASTRAR
+// ------------------------------------------------
+
+
+async function cadastrarRua(){
+
+if(!usuarioLogado()){
+alert("Faça login para cadastrar ruas");
+return;
+}
+
+let logradouro = document.getElementById("novo_logradouro").value;
+let bairro = document.getElementById("novo_bairro").value;
+let cep = document.getElementById("novo_cep").value;
+let situacao = document.getElementById("novo_situacao").value;
+
+let token = getToken();
+
+let response = await fetch(
+`/api/cadastrar?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
+{
+method:"POST",
+headers:{
+Authorization: token
+}
+}
+);
+
+let data = await response.json();
+
+document.getElementById("resultadoCadastro").innerHTML = data.status;
+
+}
+
+
+
+// ------------------------------------------------
+// LISTAR RUAS
+// ------------------------------------------------
+
+async function carregarRuas(){
+
+let response = await fetch("/api/ruas");
+
+let data = await response.json();
+
+renderTabela(data);
+
+}
+
+
+
+// ------------------------------------------------
+// RENDER TABELA
+// ------------------------------------------------
+
+function renderTabela(data){
+
+let tbody = document.querySelector("#tabelaRuas tbody");
+
+tbody.innerHTML="";
+
+if(!data || data.length === 0){
+
+tbody.innerHTML = "<tr><td colspan='5'>Nenhuma rua encontrada</td></tr>";
+
+return;
+
+}
+
+data.forEach(rua=>{
+
+let tr=document.createElement("tr");
+
+tr.innerHTML=`
+<td>${rua.Logradouro}</td>
+<td>${rua.Bairro}</td>
+<td>${rua.CEP}</td>
+<td>${rua.Situacao}</td>
+<td>
+<button onclick="editarRua(${rua.id})">Editar</button>
+<button onclick="excluirRua(${rua.id})">Excluir</button>
+</td>
+`;
+
+tbody.appendChild(tr);
+
+});
+
+}
+
+
+
+// ------------------------------------------------
+// BUSCAR RUA NA LISTA (ADMIN)
+// ------------------------------------------------
+
+async function buscarRuaAdmin(){
+
+const texto = document.getElementById("buscarRuaAdmin").value.trim();
+
+if(texto.length === 0){
+carregarRuas();
+return;
+}
+
+try{
+
+const response = await fetch(`/api/buscar?logradouro=${encodeURIComponent(texto)}`);
+
+const data = await response.json();
+
+renderTabela(data);
+
+}catch(err){
+
+console.error("Erro na busca:", err);
+
+}
+
+}
+
+
+
+// ------------------------------------------------
+// EXCLUIR
+// ------------------------------------------------
+
+async function excluirRua(id){
+
+
+if(!usuarioLogado()){
+alert("Faça login para excluir");
+return;
+}
+if(!confirm("Deseja excluir esta rua?")) return;
+
+let token = getToken();
+
+await fetch(`/api/excluir/${id}`,{
+method:"DELETE",
+headers:{
+Authorization: token
+}
+});
+
+carregarRuas();
+
+}
+
+
+
+// ------------------------------------------------
+// EDITAR
+// ------------------------------------------------
+
+async function editarRua(id){
+
+if(!usuarioLogado()){
+alert("Faça login para editar");
+return;
+}
+let logradouro = prompt("Novo logradouro:");
+let bairro = prompt("Novo bairro:");
+let cep = prompt("Novo CEP:");
+let situacao = prompt("Nova situação:");
+
+if(!logradouro || !bairro || !cep || !situacao) return;
+
+let token = getToken();
+
+await fetch(
+`/api/editar/${id}?logradouro=${encodeURIComponent(logradouro)}&bairro=${encodeURIComponent(bairro)}&cep=${encodeURIComponent(cep)}&situacao=${encodeURIComponent(situacao)}`,
+{
+method:"PUT",
+headers:{
+Authorization: token
+}
+}
+);
+
+carregarRuas();
+
+}
+
+
+
+// ------------------------------------------------
+// AUTOCOMPLETE
+// ------------------------------------------------
+
+document.addEventListener("DOMContentLoaded", function(){
+
+    if(!usuarioLogado()){
+
+document.querySelectorAll(".admin").forEach(el=>{
+el.style.display="none";
+});
+
+}
+const input = document.getElementById("rua");
+const sugestoesBox = document.getElementById("sugestoes");
+
+if(input && sugestoesBox){
+
+input.addEventListener("input", async function(){
+
+let texto = input.value.trim();
+
+if(texto.length < 2){
+sugestoesBox.innerHTML = "";
+return;
+}
+
+try{
+
+let response = await fetch(`/api/sugestoes?q=${encodeURIComponent(texto)}`);
+
+let dados = await response.json();
+
+sugestoesBox.innerHTML = "";
+
+dados.forEach(function(rua){
+
+let item = document.createElement("div");
+
+item.classList.add("item-sugestao");
+
+item.innerText = rua;
+
+item.onclick = function(){
+
+input.value = rua;
+
+sugestoesBox.innerHTML = "";
+
+};
+
+sugestoesBox.appendChild(item);
+
+});
+
+}catch(err){
+
+console.error("Erro autocomplete:", err);
+
+}
+
+});
+
+}
+
+
+
+// ------------------------------------------------
+// BUSCA ADMIN AUTOMÁTICA
+// ------------------------------------------------
+
+const buscaAdmin = document.getElementById("buscarRuaAdmin");
+
+if(buscaAdmin){
+
+buscaAdmin.addEventListener("input", function(){
+
+buscarRuaAdmin();
+
+});
+
+}
+
+});
+
+
+
+// ------------------------------------------------
+// LOGIN
+// ------------------------------------------------
+
+async function login(){
+
+let usuario = document.getElementById("usuario").value;
+let senha = document.getElementById("senha").value;
+
+try{
+
+let response = await fetch(`/api/login?username=${encodeURIComponent(usuario)}&password=${encodeURIComponent(senha)}`,{
+method:"POST"
+});
+
+if(response.status !== 200){
+
+document.getElementById("statusLogin").innerHTML = "Usuário ou senha inválidos";
+
+return;
+
+}
+
+let data = await response.json();
+
+localStorage.setItem("token", data.token);
+
+document.getElementById("statusLogin").innerHTML = "Login realizado com sucesso";
+
+}catch(err){
+
+console.error(err);
+
+}
+
+}
+
+
+
+index.html
+
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+<meta charset="UTF-8">
+<title>Sistema CEP Jarinu</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+
+    <img src="/img/logo.png" class="logo">
+
+    <h2>CEP JARINU</h2>
+
+    <button onclick="mostrarPagina('consulta')">Consulta CEP</button>
+    <button class="admin" onclick="mostrarPagina('cadastro')">Cadastrar Logradouro</button>
+    <button class="admin" onclick="mostrarPagina('lista')">Listar Logradouros</button>
+
+</div>
+
+<!-- CONTEÚDO -->
+<div class="conteudo">
+
+    <!-- TOPO -->
+    <div class="top-bar">
+        <div class="login-topo">
+            <span id="usuarioLogado"></span>
+            <input id="usuario" placeholder="Usuário">
+            <input id="senha" type="password" placeholder="Senha">
+            <button onclick="login()">Entrar</button>
+            <button onclick="logout()" id="btnLogout" style="display:none;">Sair</button>
+        </div>
+    </div>
+
+    <!-- CONSULTA -->
+    <div id="consulta" class="pagina">
+
+        <h1>Consulta de CEP</h1>
+
+        <div class="campo">
+            <input type="text" id="rua" placeholder="Digite o nome da rua">
+            <div id="sugestoes"></div>
+        </div>
+
+        <div class="campo">
+            <input type="text" id="bairro" placeholder="Digite o bairro (opcional)">
+            <div id="sugestoesBairro"></div>
+        </div>
+
+        <button onclick="buscar()">Consultar</button>
+
+        <div id="resultado"></div>
+
+    </div>
+
+    <!-- CADASTRO -->
+    <div id="cadastro" class="pagina" style="display:none">
+
+        <h1>Cadastrar Nova Rua</h1>
+
+        <input type="text" id="novo_logradouro" placeholder="Logradouro">
+        <input type="text" id="novo_bairro" placeholder="Bairro">
+        <input type="text" id="novo_cep" placeholder="CEP">
+        <input type="text" id="novo_situacao" placeholder="Situação">
+
+        <button onclick="cadastrarRua()">Cadastrar</button>
+
+        <div id="resultadoCadastro"></div>
+
+    </div>
+
+    <!-- LISTA -->
+    <div id="lista" class="pagina" style="display:none">
+
+        <h1>Logradouros Cadastrados</h1>
+
+        <input type="text" id="buscarRuaAdmin" placeholder="Buscar rua...">
+
+        <button onclick="carregarRuas()">Atualizar Lista</button>
+
+        <table id="tabelaRuas">
+            <thead>
+                <tr>
+                    <th>Logradouro</th>
+                    <th>Bairro</th>
+                    <th>CEP</th>
+                    <th>Situação</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+    </div>
+
+</div>
+
+</div>
+
+<script src="/script.js"></script>
+
+</body>
+</html>

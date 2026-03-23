@@ -4,6 +4,7 @@ from backend.auth.auth_service import validar_token
 
 from backend.services.cep_service import (
     buscar_rua,
+    sugestoes_bairro,
     sugestoes_rua,
     listar_ruas,
     cadastrar_rua,
@@ -11,12 +12,13 @@ from backend.services.cep_service import (
     excluir_rua
 )
 
+
 router = APIRouter(prefix="/api")
 
 
 @router.get("/buscar")
-def buscar(logradouro: str):
-    return buscar_rua(logradouro)
+def buscar(logradouro: str, bairro: str = None):
+    return buscar_rua(logradouro, bairro)
 
 
 @router.get("/sugestoes")
@@ -28,6 +30,9 @@ def sugestoes_rota(q: str):
 def listar():
     return listar_ruas()
 
+@router.get("/sugestoes-bairro")
+def sugestoes_bairro_rota(q: str):
+    return sugestoes_bairro(q)
 
 # rotas protegidas
 
